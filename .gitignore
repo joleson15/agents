@@ -1,1 +1,3 @@
 .venv
+trend_spotter/__pycache__
+.env
