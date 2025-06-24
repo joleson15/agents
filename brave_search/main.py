@@ -11,7 +11,6 @@ os.getenv("GOOGLE_API_KEY")
 tool = BraveSearch()
 # print(tool.run("What is the capital of France?"))
 
-API_KEY = "AIzaSyDWX4Kz60IreY_z47ChwNFoRBOmlZFfqxU"
 SYSTEM_PROMPT = """
             You are a web-search expert that can curate a list of results based on a text query.
             Take the context given to you and return a list of relevant URLs, along with a brief description of each result.
