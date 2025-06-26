@@ -1,6 +1,4 @@
 from langchain_community.tools import BraveSearch
-# from langchain_community.chat_models import ChatGoogle
-from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 from google import genai
 import os
@@ -9,7 +7,6 @@ load_dotenv()
 
 os.getenv("GOOGLE_API_KEY")
 tool = BraveSearch()
-# print(tool.run("What is the capital of France?"))
 
 SYSTEM_PROMPT = """
             You are a web-search expert that can curate a list of results based on a text query.
@@ -30,10 +27,7 @@ SYSTEM_PROMPT = """
 model = 'gemini-2.5-flash'
 
 content = SYSTEM_PROMPT + tool.run("What are the top 5 AI topics right now?")
-# print((tool.run("What are the top 5 AI topics right now?")))
-# llm = ChatGoogleGenerativeAI(model = model)
-# result = llm.invoke("What are the top 5 AI topics right now?")
-# print(content)
+
 
 client = genai.Client(api_key = os.getenv("GOOGLE_GEMINI_API_KEY"))
 response = client.models.generate_content(model=model, contents=content)
