@@ -30,8 +30,14 @@ class LittlehorseAgentExecutor(AgentExecutor):
                 TaskState.working,
                 new_agent_text_message(self.status_message, task.contextId, task.id)
             )
-
-            await self.agent.connect_to_server("sse", url="http://localhost:8081/mcp/sse")
+            try:
+                await self.agent.connect_to_server("sse", url="http://localhost:8081/mcp/sse")
+            except:
+                await updater.update_status(
+                    TaskState.failed,
+                    new_agent_text_message(f"Error: Could not connect to the MCP Server"),
+                    final=True
+                )
 
             response = await self.agent.process_query(query)
             print(response)
@@ -46,7 +52,7 @@ class LittlehorseAgentExecutor(AgentExecutor):
         except Exception as e:
             await updater.update_status(
                 TaskState.failed,
-                new_agent_text_message(f"Error (executing): {e!s}", task.contextId, task.id),
+                new_agent_text_message(f"Execution Error: {e!s}", task.contextId, task.id),
                 final=True
             )
 
