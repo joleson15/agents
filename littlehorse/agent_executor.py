@@ -3,7 +3,7 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.utils import new_task, new_agent_text_message
 from a2a.types import TaskState, Part, TextPart
-from client import MCPClient
+from omni_client.client import MCPClient
 
 
 class LittlehorseAgentExecutor(AgentExecutor):
@@ -30,6 +30,7 @@ class LittlehorseAgentExecutor(AgentExecutor):
                 TaskState.working,
                 new_agent_text_message(self.status_message, task.contextId, task.id)
             )
+            #littlhorse checkpoint 1 here
             try:
                 await self.agent.connect_to_server("sse", url="http://localhost:8081/mcp/sse")
             except:

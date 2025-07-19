@@ -4,13 +4,15 @@ from a2a.server.events import EventQueue
 from a2a.utils import new_task, new_agent_text_message
 from a2a.server.tasks import TaskUpdater
 from a2a.types import TaskState
+from agent import Crawl4AIAgent
 
 class Crawl4AIAgentExecutor(AgentExecutor):
 
-    def __init__(self, status_message: str="Crawling page...", artifact_name: str="response"):
+    def __init__(self, agent: Crawl4AIAgent, status_message: str="Crawling page...", artifact_name: str="response"):
 
         self.status_message=status_message
         self.artifact_name=artifact_name
+        self.agent = Crawl4AIAgent() if agent is None else agent
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
         
@@ -26,6 +28,7 @@ class Crawl4AIAgentExecutor(AgentExecutor):
                 TaskState.working,
                 new_agent_text_message(self.status_message)
             )
+
             
         except Exception as e:
             await updater.update_status(

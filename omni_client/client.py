@@ -5,6 +5,8 @@ from mcp import ClientSession
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client, StdioServerParameters
 from anthropic import Anthropic
+from config import DefaultMCPClientConfig
+from providers.anthropic_provider import AnthropicModelProvider
 
 from dotenv import load_dotenv
 import json
@@ -15,6 +17,8 @@ class MCPClient:
     def __init__(self):
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
+        self.config = DefaultMCPClientConfig()
+        self.provider = AnthropicModelProvider()
         self.anthropic = Anthropic()
         self.model_name = "claude-3-5-haiku-20241022"
 
@@ -72,13 +76,17 @@ class MCPClient:
             "input_schema": tool.inputSchema
         } for tool in response.tools]
 
-        # Initial Claude API call
-        response = self.anthropic.messages.create(
-            model=self.model_name,
-            max_tokens=1000,
-            messages=messages,
-            tools=available_tools
-        )
+        self.provider.tools = available_tools
+
+        # want this to be something like "provider.send_message_to_model"
+        # response = self.anthropic.messages.create(
+        #     model=self.model_name,
+        #     max_tokens=1000,
+        #     messages=messages,
+        #     tools=available_tools
+        # )
+
+        response = self.provider.send_message(query)
 
         # Process response and handle tool calls
         final_text = []
@@ -113,13 +121,14 @@ class MCPClient:
                     ]
                 })
 
-                # Get next response from Claude
+                # going to need to figure out a way to parse this message/standardize the schema
                 response = self.anthropic.messages.create(
                     model=self.model_name,
                     max_tokens=1000,
                     messages=messages,
                     tools=available_tools
                 )
+                # response = self.provider.send_message(messages)
 
                 final_text.append(response.content[0].text)
 

@@ -1,5 +1,5 @@
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from client import MCPClient
+from omni_client.client import MCPClient
 import asyncio
 
 class LittlehorseAgent:

@@ -1,4 +1,4 @@
-from client import MCPClient
+from omni_client.client import MCPClient
 import asyncio
 import json
 
