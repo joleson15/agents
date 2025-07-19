@@ -28,9 +28,12 @@ async def main():
         )
 
         await page.goto("https://www.google.com/travel/flights")
-        await agent.execute("search for one-way flights from honolulu to san diego on august 1st 2025, find me some options")
+        await page.act("click the dropdown menu and click 'one way'")
+        await page.act("there are three fields to fill out, from left to right: origin, destination, date")
+        await page.act("for the first field, click it and fill in honolulu, second one click it and fill in san diego, third field click departure and click august 1st for the date")
+        # await agent.execute("search for one-way flights from honolulu to san diego on august 1st 2025, find me some options")
 
-        result = await page.extract("find me some options")
+        result = await page.extract("find me some flight options for august 1st from honolulu to san diego")
 
         print(f"Extracted: {result.extraction}")
 

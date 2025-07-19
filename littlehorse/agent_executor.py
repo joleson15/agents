@@ -48,7 +48,7 @@ class LittlehorseAgentExecutor(AgentExecutor):
             await self.agent.cleanup()
             await updater.complete()
 
-        
+
         except Exception as e:
             await updater.update_status(
                 TaskState.failed,
