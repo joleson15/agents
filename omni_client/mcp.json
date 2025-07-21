@@ -1,0 +1,19 @@
+{
+    "mcpServers": {
+        "Littlehorse": {
+            "type": "sse",
+            "url": "http://localhost:8081/mcp/sse"
+        },
+        "brave-search": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-brave-search"
+            ],
+            "env": {
+                "BRAVE_API_KEY": "BSAEJ_DLivpfhmM8r1Wue6AV8aMmLen"
+            }
+        }
+    }
+}
