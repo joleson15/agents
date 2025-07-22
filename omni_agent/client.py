@@ -1,13 +1,14 @@
 from typing import Optional, Dict, Any, Union
 from contextlib import AsyncExitStack
+import asyncio
 
 from mcp import ClientSession
 from mcp.client.session_group import ClientSessionGroup, SseServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client, StdioServerParameters
 from anthropic import Anthropic
-from config import DefaultMCPClientConfig
-from providers.anthropic_provider import AnthropicModelProvider
+from .config import DefaultMCPClientConfig
+from .providers.anthropic_provider import AnthropicModelProvider
 import json
 
 from dotenv import load_dotenv
@@ -23,12 +24,19 @@ class MCPClient:
         
         self.anthropic = Anthropic() #temp
         self.session_group = ClientSessionGroup()
+        
 
+    @classmethod
+    async def create(cls):
+        self = cls()
+        await self.connect()
+        return self
+    
     async def connect(self):
-
+            
         server_parameters: Dict[str, Union[SseServerParameters, StdioServerParameters]] = {} #streamable http not yet supported
 
-        file_path = "/home/joleson/work/agents/omni_client/mcp.json"
+        file_path = "/home/joleson/work/agents/omni_agent/mcp.json"
 
         with open(file_path) as f:
             server_json = json.load(f)
@@ -64,7 +72,7 @@ class MCPClient:
             session = await self.session_group.connect_to_server(server)
             print(f"Connected to server: {name}")
             sessions.append(session)
-
+                
 
     async def process_query(self, query: str) -> str:
 
@@ -87,7 +95,6 @@ class MCPClient:
             messages=messages,
             tools=available_tools
         )
-
 
         final_text = []
         assistant_message_content = []
@@ -133,11 +140,9 @@ class MCPClient:
 
         return "\n".join(final_text)
 
-
     async def chat_loop(self):
         print("\nMCP Client Started...")
         print("What can I help you with? Type 'quit' to exit.")
-
 
         while True:
             try:

@@ -1,5 +1,5 @@
 from anthropic import Anthropic
-from providers.default_provider import ModelProvider
+from .default_provider import ModelProvider
 from typing import Union
 
 class AnthropicModelProvider(ModelProvider):

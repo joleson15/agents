@@ -3,7 +3,7 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.utils import new_task, new_agent_text_message
 from a2a.types import TaskState, Part, TextPart
-from omni_client.client import MCPClient
+from omni_agent.client import MCPClient
 
 
 class LittlehorseAgentExecutor(AgentExecutor):

@@ -1,8 +1,8 @@
 from anthropic import Anthropic
 from openai import OpenAI
 from google import genai
-from providers.default_provider import ModelProvider
-from providers.anthropic_provider import AnthropicModelProvider
+from .providers.default_provider import ModelProvider
+from .providers.anthropic_provider import AnthropicModelProvider
 
 
 class DefaultMCPClientConfig:
