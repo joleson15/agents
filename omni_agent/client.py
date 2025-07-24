@@ -11,6 +11,7 @@ from .config import DefaultMCPClientConfig
 from .providers.anthropic_provider import AnthropicModelProvider
 import json
 
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 import json
 
@@ -24,15 +25,10 @@ class MCPClient:
         
         self.anthropic = Anthropic() #temp
         self.session_group = ClientSessionGroup()
+        self.tools = []
+        self.sessions = []
         
-
-    @classmethod
-    async def create(cls):
-        self = cls()
-        await self.connect()
-        return self
-    
-    async def connect(self):
+    def get_server_parameters(self):
             
         server_parameters: Dict[str, Union[SseServerParameters, StdioServerParameters]] = {} #streamable http not yet supported
 
@@ -67,13 +63,66 @@ class MCPClient:
             else:
                 raise TypeError(f"Field 'type' not properly set for item: {name}")
         
-        sessions = []
-        for name, server in server_parameters.items():
-            session = await self.session_group.connect_to_server(server)
-            print(f"Connected to server: {name}")
-            sessions.append(session)
+        return server_parameters
+    
+
+    @asynccontextmanager
+    async def connect(self, serverparams: Union[StdioServerParameters, SseServerParameters]):
+
+        if isinstance(serverparams, StdioServerParameters):
+            client = stdio_client(serverparams)
+            
+        elif isinstance(serverparams, SseServerParameters):
+            client = sse_client(
+                url=serverparams.url,
+                )
+
+            # elif transport == "streamable-http":
+            #     client = streamablehttp_client(**serverparams)
+            # else:
+            #     raise ValueError(
+            #         f"Invalid transport, expected sse or streamable-http found `{transport}`"
+            #     )
+        else:
+            raise ValueError(
+                f"Invalid serverparams, expected StdioServerParameters or dict found `{type(serverparams)}`"
+            )
+
+        timeout = None
+        # if isinstance(client_session_timeout_seconds, float):
+        #     timeout = timedelta(seconds=client_session_timeout_seconds)
+        # elif isinstance(client_session_timeout_seconds, timedelta):
+        #     timeout = client_session_timeout_seconds
+
+        async with client as (read, write, *_):
+            async with ClientSession(
+                read,
+                write,
+                timeout,
+            ) as session:
+                # Initialize the connection and get the tools from the mcp server
+                await session.initialize()
+                tools = await session.list_tools()
+                yield session, tools.tools
                 
 
+    async def __aenter__(self):
+        self._ctxmanager = AsyncExitStack()
+
+        connections = [
+            await self._ctxmanager.enter_async_context(
+                self.connect(params)
+            )
+            for params in self.get_server_parameters().values()
+        ]
+
+        self.sessions, self.mcp_tools = [list(c) for c in zip(*connections)]
+
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._ctxmanager.__aexit__(exc_type, exc_val, exc_tb)
+        
     async def process_query(self, query: str) -> str:
 
         available_tools = [{
@@ -160,3 +209,11 @@ class MCPClient:
 
     async def cleanup(self):
         await self.exit_stack.aclose()
+
+
+if __name__ == "__main__":
+
+    client = MCPClient()
+
+    print([value for value in client.get_server_parameters().values()])
+    
