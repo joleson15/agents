@@ -5,7 +5,7 @@ import sys
 
 async def main():
     async with MCPClient() as client:
-        await client.chat_loop()
-        
+        print(client.tools)
+
 if __name__ == "__main__":
     asyncio.run(main())

@@ -13,11 +13,12 @@ import json
 
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-import json
+
+from a2a.server.agent_execution import AgentExecutor
 
 load_dotenv()
 
-class MCPClient:
+class MCPClient(AgentExecutor):
     def __init__(self):
         self.exit_stack = AsyncExitStack()
         self.config = DefaultMCPClientConfig()
@@ -26,8 +27,16 @@ class MCPClient:
         self.anthropic = Anthropic() #temp
         self.session_group = ClientSessionGroup()
         self.tools = []
-        self.sessions = []
+        self.sessions: list[ClientSession] = []
+        self.tool_map = {}
         
+
+    async def execute(self, context, event_queue):
+        pass
+
+    async def cancel(self, context, event_queue):
+        pass
+
     def get_server_parameters(self):
             
         server_parameters: Dict[str, Union[SseServerParameters, StdioServerParameters]] = {} #streamable http not yet supported
@@ -75,6 +84,7 @@ class MCPClient:
         elif isinstance(serverparams, SseServerParameters):
             client = sse_client(
                 url=serverparams.url,
+                #handle the rest of these params
                 )
 
             # elif transport == "streamable-http":
@@ -111,18 +121,30 @@ class MCPClient:
 
         connections = [
             await self._ctxmanager.enter_async_context(
-                self.connect(params)
+                self.connect(params) #handle timeouts
             )
             for params in self.get_server_parameters().values()
         ]
 
         self.sessions, self.mcp_tools = [list(c) for c in zip(*connections)]
+        # for session, tools in zip(*connections):
+        #     for tool in tools:
+        #         self.tool_map[tool.name]
+
+        # map tools to sessions so that we can call session.call_tool(tool_name, tool_args)
+
+        self.tools = [(await s.list_tools()).tools for s in self.sessions]
 
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self._ctxmanager.__aexit__(exc_type, exc_val, exc_tb)
         
+
+    async def call_tool(self, name: str, args: dict[str, Any]):
+        pass
+
+
     async def process_query(self, query: str) -> str:
 
         available_tools = [{
