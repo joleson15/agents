@@ -1,6 +1,5 @@
-from typing import Optional, Dict, Any, Union
+from typing import Dict, Any, Union
 from contextlib import AsyncExitStack
-import asyncio
 
 from mcp import ClientSession
 from mcp.client.session_group import ClientSessionGroup, SseServerParameters
@@ -14,12 +13,25 @@ import json
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
-from a2a.server.agent_execution import AgentExecutor
+from a2a.server.agent_execution import AgentExecutor, RequestContext
+from a2a.server.events import EventQueue
+from a2a.types import TaskState, TextPart, Part
+from a2a.utils import new_agent_text_message, new_task
+from a2a.server.tasks import TaskUpdater
 
 load_dotenv()
 
-class MCPClient(AgentExecutor):
-    def __init__(self):
+class OmniAgentExecutor(AgentExecutor):
+    
+    def __init__(
+            self,
+            status_message: str = "Executing task...",
+            artifact_name: str = "response"
+        ):
+        
+        self.status_message = status_message
+        self.artifact_name = artifact_name
+        
         self.exit_stack = AsyncExitStack()
         self.config = DefaultMCPClientConfig()
         self.provider = AnthropicModelProvider()
@@ -28,13 +40,51 @@ class MCPClient(AgentExecutor):
         self.session_group = ClientSessionGroup()
         self.tools = []
         self.sessions: list[ClientSession] = []
-        self.tool_map = {}
+        self.tool_map: Dict[str, ClientSession] = {}
         
 
-    async def execute(self, context, event_queue):
-        pass
+    async def execute(self, context: RequestContext, event_queue: EventQueue):
 
-    async def cancel(self, context, event_queue):
+        query = context.get_user_input()
+        task = context.current_task
+        if not task:
+            task = new_task(context.message)
+        
+        updater = TaskUpdater(event_queue, task.id, task.contextId)
+
+        try:
+            await updater.update_status(
+                TaskState.working,
+                new_agent_text_message(self.status_message, task.contextId, task.id)
+            )
+            #littlhorse checkpoint 1 here
+            # try:
+            #     await self.agent.connect_to_server("sse", url="http://localhost:8081/mcp/sse")
+            # except:
+            #     await updater.update_status(
+            #         TaskState.failed,
+            #         new_agent_text_message(f"Error: Could not connect to the MCP Server"),
+            #         final=True
+            #     )
+
+            response = await self.process_query(query)
+            print(response)
+            await updater.add_artifact(
+                [Part(root=TextPart(text=response))],
+                name=self.artifact_name
+            )
+            await self.agent.cleanup()
+            await updater.complete()
+
+
+        except Exception as e:
+            await updater.update_status(
+                TaskState.failed,
+                new_agent_text_message(f"Execution Error: {e!s}", task.contextId, task.id),
+                final=True
+            )    
+
+    async def cancel(self, context: RequestContext, event_queue: EventQueue):
         pass
 
     def get_server_parameters(self):
@@ -126,14 +176,15 @@ class MCPClient(AgentExecutor):
             for params in self.get_server_parameters().values()
         ]
 
-        self.sessions, self.mcp_tools = [list(c) for c in zip(*connections)]
-        # for session, tools in zip(*connections):
-        #     for tool in tools:
-        #         self.tool_map[tool.name]
+        self.connections = connections
+        for session, tools in connections:
+            self.sessions.append(session)
+            for tool in tools:
+                self.tool_map[tool.name] = session
+                self.tools.append(tool)
 
-        # map tools to sessions so that we can call session.call_tool(tool_name, tool_args)
 
-        self.tools = [(await s.list_tools()).tools for s in self.sessions]
+        # self.tools = [(await s.list_tools()).tools for s in self.sessions]
 
         return self
 
@@ -141,8 +192,10 @@ class MCPClient(AgentExecutor):
         await self._ctxmanager.__aexit__(exc_type, exc_val, exc_tb)
         
 
-    async def call_tool(self, name: str, args: dict[str, Any]):
-        pass
+    async def call_tool(self, tool_name: str, tool_args: dict[str, Any]):
+        
+        session = self.tool_map[tool_name]
+        return await session.call_tool(tool_name, tool_args)
 
 
     async def process_query(self, query: str) -> str:
@@ -151,7 +204,7 @@ class MCPClient(AgentExecutor):
             "name": tool.name,
             "description": tool.description,
             "input_schema": tool.inputSchema
-        } for _, tool in self.session_group.tools.items()]
+        } for tool in self.tools]
 
         messages = [
             {
@@ -179,7 +232,7 @@ class MCPClient(AgentExecutor):
                 tool_name = content.name
                 tool_args = content.input
 
-                result = await self.session_group.call_tool(tool_name, tool_args)
+                result = await self.call_tool(tool_name, tool_args)
                 final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
 
                 assistant_message_content.append(content)
@@ -229,13 +282,5 @@ class MCPClient(AgentExecutor):
                 print(f"\nError: {str(e)}")
 
 
-    async def cleanup(self):
-        await self.exit_stack.aclose()
-
-
-if __name__ == "__main__":
-
-    client = MCPClient()
-
-    print([value for value in client.get_server_parameters().values()])
-    
+    # async def cleanup(self):
+    #     await self.exit_stack.aclose()
