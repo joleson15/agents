@@ -39,10 +39,9 @@ async def main():
                 task_store=InMemoryTaskStore()
             )
         )
-        # uvicorn.run(app.build(), host=host, port=port)
         config = uvicorn.Config(app.build(), host=host, port=port, loop="asyncio")
         server = uvicorn.Server(config)
-        await server.serve()  # <<< THIS IS NON-BLOCKING AND AWAITS CORRECTLY    
+        await server.serve()
 
 if __name__ == "__main__":
     asyncio.run(main())

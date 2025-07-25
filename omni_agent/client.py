@@ -1,6 +1,6 @@
 from typing import Dict, Any, Union
 from contextlib import AsyncExitStack
-
+import asyncio
 from mcp import ClientSession
 from mcp.client.session_group import ClientSessionGroup, SseServerParameters
 from mcp.client.sse import sse_client
@@ -160,7 +160,6 @@ class OmniAgentExecutor(AgentExecutor):
                 write,
                 timeout,
             ) as session:
-                # Initialize the connection and get the tools from the mcp server
                 await session.initialize()
                 tools = await session.list_tools()
                 yield session, tools.tools
@@ -284,3 +283,14 @@ class OmniAgentExecutor(AgentExecutor):
 
     # async def cleanup(self):
     #     await self.exit_stack.aclose()
+
+
+
+async def main():
+
+    async with OmniAgentExecutor() as agent:
+        await agent.chat_loop()
+
+if __name__ == "__main__":
+
+    asyncio.run(main())
